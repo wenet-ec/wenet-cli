@@ -42,6 +42,33 @@ wenet deploy
 and `.edgeignore`, and writes a deployment archive under `.wenet/`.
 
 `wenet push` and `wenet deploy` are command slots for the public API integration.
+They are designed for two package source modes:
+
+```bash
+# Local archive upload: build locally, upload file to WENet.
+wenet push
+wenet deploy
+
+# Existing archive upload: send a prebuilt .tar.gz.
+wenet push --package-file dist/app.tar.gz
+wenet deploy --package-file dist/app.tar.gz
+
+# Git repo import: WENet clones and packs the repo server-side.
+wenet push --source-url https://github.com/org/repo --source-ref main
+wenet deploy --source-url https://github.com/org/repo --source-ref main
+```
+
+For private repos, pass a PAT/deploy token with `--source-token` or
+`SOURCE_TOKEN`. Source URLs must be HTTPS clone URLs; SSH URLs are not supported.
+
+CI env vars:
+
+```bash
+SOURCE_URL=https://github.com/org/repo
+SOURCE_REF=main
+SOURCE_TOKEN=...
+PACKAGE_FILE=dist/app.tar.gz
+```
 
 ## edge.toml
 
