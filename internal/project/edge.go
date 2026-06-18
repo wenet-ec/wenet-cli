@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -14,7 +15,7 @@ const ConfigFileName = "edge.toml"
 type Config struct {
 	Project         string   `toml:"project"`
 	Tag             string   `toml:"tag"`
-	ScriptPath      string   `toml:"script_path"`
+	Scripts         Scripts  `toml:"scripts"`
 	NodeIDs         []string `toml:"node_ids"`
 	ClusterNames    []string `toml:"cluster_names"`
 	Tags            []string `toml:"tags"`
@@ -22,6 +23,36 @@ type Config struct {
 	SecretScope     string   `toml:"secret_scope"`
 	DownloadBaseDir string   `toml:"download_base_dir"`
 	Cleanup         *bool    `toml:"cleanup"`
+}
+
+type Scripts struct {
+	Linux   string `toml:"linux"`
+	Darwin  string `toml:"darwin"`
+	Windows string `toml:"windows"`
+}
+
+func (s Scripts) Paths() map[string]string {
+	paths := map[string]string{}
+	if s.Linux != "" {
+		paths["linux"] = s.Linux
+	}
+	if s.Darwin != "" {
+		paths["darwin"] = s.Darwin
+	}
+	if s.Windows != "" {
+		paths["windows"] = s.Windows
+	}
+	return paths
+}
+
+func (s Scripts) Platforms() []string {
+	paths := s.Paths()
+	platforms := make([]string, 0, len(paths))
+	for platform := range paths {
+		platforms = append(platforms, platform)
+	}
+	sort.Strings(platforms)
+	return platforms
 }
 
 func Load(root string) (*Config, error) {
@@ -55,11 +86,14 @@ func (c Config) Validate() error {
 	if c.Tag == "" {
 		return fmt.Errorf("edge.toml tag is required")
 	}
-	if c.ScriptPath == "" {
-		return fmt.Errorf("edge.toml script_path is required")
+	scripts := c.Scripts.Paths()
+	if len(scripts) == 0 {
+		return fmt.Errorf("edge.toml [scripts] must include at least one of linux, darwin, or windows")
 	}
-	if filepath.IsAbs(c.ScriptPath) {
-		return fmt.Errorf("edge.toml script_path must be relative")
+	for platform, scriptPath := range scripts {
+		if filepath.IsAbs(scriptPath) {
+			return fmt.Errorf("edge.toml scripts.%s must be relative", platform)
+		}
 	}
 
 	targets := 0

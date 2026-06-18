@@ -12,8 +12,10 @@ func TestLoadAppliesDefaults(t *testing.T) {
 	writeFile(t, filepath.Join(root, "edge.toml"), `
 project = "site"
 tag = "1.0.0"
-script_path = "deploy.sh"
 all = true
+
+[scripts]
+linux = "deploy.sh"
 `)
 
 	cfg, err := Load(root)
@@ -32,7 +34,7 @@ func TestValidateRequiresExactlyOneTarget(t *testing.T) {
 	cfg := Config{
 		Project:      "site",
 		Tag:          "1.0.0",
-		ScriptPath:   "deploy.sh",
+		Scripts:      Scripts{Linux: "deploy.sh"},
 		NodeIDs:      []string{"node-a"},
 		ClusterNames: []string{"cluster-a"},
 	}
@@ -44,10 +46,24 @@ func TestValidateRequiresExactlyOneTarget(t *testing.T) {
 
 func TestValidateRejectsAbsoluteScriptPath(t *testing.T) {
 	cfg := Config{
-		Project:    "site",
-		Tag:        "1.0.0",
-		ScriptPath: "/deploy.sh",
-		All:        true,
+		Project: "site",
+		Tag:     "1.0.0",
+		Scripts: Scripts{
+			Linux: "/deploy.sh",
+		},
+		All: true,
+	}
+
+	if err := cfg.Validate(); err == nil {
+		t.Fatal("Validate() error = nil, want error")
+	}
+}
+
+func TestValidateRequiresScript(t *testing.T) {
+	cfg := Config{
+		Project: "site",
+		Tag:     "1.0.0",
+		All:     true,
 	}
 
 	if err := cfg.Validate(); err == nil {

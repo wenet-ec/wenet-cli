@@ -15,10 +15,14 @@ func TestBuildCreatesArchiveWithIgnoreRules(t *testing.T) {
 	writeFile(t, filepath.Join(root, "edge.toml"), `
 project = "site"
 tag = "1.0.0"
-script_path = "deploy.sh"
 all = true
+
+[scripts]
+linux = "deploy.sh"
+windows = "deploy.ps1"
 `)
 	writeFile(t, filepath.Join(root, "deploy.sh"), "#!/bin/sh\necho deploy\n")
+	writeFile(t, filepath.Join(root, "deploy.ps1"), "Write-Host deploy\n")
 	writeFile(t, filepath.Join(root, "app.txt"), "app")
 	writeFile(t, filepath.Join(root, ".gitignore"), "ignored.txt\n")
 	writeFile(t, filepath.Join(root, ".edgeignore"), "secret.txt\n")
@@ -29,12 +33,12 @@ all = true
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if result.FileCount != 5 {
-		t.Fatalf("FileCount = %d, want 5", result.FileCount)
+	if result.FileCount != 6 {
+		t.Fatalf("FileCount = %d, want 6", result.FileCount)
 	}
 
 	names := archiveNames(t, result.Path)
-	want := []string{".edgeignore", ".gitignore", "app.txt", "deploy.sh", "edge.toml"}
+	want := []string{".edgeignore", ".gitignore", "app.txt", "deploy.ps1", "deploy.sh", "edge.toml"}
 	if diffStrings(names, want) {
 		t.Fatalf("archive names = %#v, want %#v", names, want)
 	}
@@ -45,8 +49,10 @@ func TestBuildRejectsIgnoredScript(t *testing.T) {
 	writeFile(t, filepath.Join(root, "edge.toml"), `
 project = "site"
 tag = "1.0.0"
-script_path = "deploy.sh"
 all = true
+
+[scripts]
+linux = "deploy.sh"
 `)
 	writeFile(t, filepath.Join(root, "deploy.sh"), "#!/bin/sh\n")
 	writeFile(t, filepath.Join(root, ".edgeignore"), "deploy.sh\n")

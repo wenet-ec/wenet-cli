@@ -41,8 +41,10 @@ func Build(root string, output string) (*Result, error) {
 		return nil, err
 	}
 
-	if err := validateScript(root, cfg.ScriptPath, matcher); err != nil {
-		return nil, err
+	for platform, scriptPath := range cfg.Scripts.Paths() {
+		if err := validateScript(root, platform, scriptPath, matcher); err != nil {
+			return nil, err
+		}
 	}
 
 	tmp := output + ".tmp"
@@ -136,20 +138,20 @@ func buildIgnoreMatcher(root string) (*ignore.GitIgnore, error) {
 	return ignore.CompileIgnoreLines(patterns...), nil
 }
 
-func validateScript(root string, scriptPath string, matcher *ignore.GitIgnore) error {
+func validateScript(root string, platform string, scriptPath string, matcher *ignore.GitIgnore) error {
 	clean := filepath.Clean(scriptPath)
 	if clean == "." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) || clean == ".." {
-		return fmt.Errorf("edge.toml script_path must stay inside the project")
+		return fmt.Errorf("edge.toml scripts.%s must stay inside the project", platform)
 	}
 	if matcher.MatchesPath(filepath.ToSlash(clean)) {
-		return fmt.Errorf("edge.toml script_path %q is ignored by .gitignore or .edgeignore", scriptPath)
+		return fmt.Errorf("edge.toml scripts.%s %q is ignored by .gitignore or .edgeignore", platform, scriptPath)
 	}
 	info, err := os.Stat(filepath.Join(root, clean))
 	if err != nil {
-		return fmt.Errorf("edge.toml script_path %q does not exist", scriptPath)
+		return fmt.Errorf("edge.toml scripts.%s %q does not exist", platform, scriptPath)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("edge.toml script_path %q is a directory", scriptPath)
+		return fmt.Errorf("edge.toml scripts.%s %q is a directory", platform, scriptPath)
 	}
 	return nil
 }

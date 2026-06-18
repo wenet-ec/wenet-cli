@@ -43,6 +43,25 @@ and `.edgeignore`, and writes a deployment archive under `.wenet/`.
 
 `wenet push` and `wenet deploy` are command slots for the public API integration.
 
+## edge.toml
+
+```toml
+project = "my-web-server"
+tag = "1.2.0"
+
+[scripts]
+linux = "deploy.sh"
+darwin = "deploy.sh"
+windows = "deploy.ps1"
+
+all = true
+download_base_dir = "/tmp"
+cleanup = true
+```
+
+At least one script key is required. Valid keys are `linux`, `darwin`, and
+`windows`. Every declared script must exist in the package archive.
+
 ## Release
 
 Releases are built by GoReleaser when a `v*` tag is pushed:
