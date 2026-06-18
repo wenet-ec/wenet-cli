@@ -1,0 +1,4 @@
+.wenet/
+dist/
+coverage.out
+tmp/
