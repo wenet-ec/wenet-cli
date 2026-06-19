@@ -33,12 +33,20 @@ windows = "deploy.ps1"
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if result.FileCount != 6 {
-		t.Fatalf("FileCount = %d, want 6", result.FileCount)
+	if result.FileCount != 7 {
+		t.Fatalf("FileCount = %d, want 7", result.FileCount)
 	}
 
 	names := archiveNames(t, result.Path)
-	want := []string{".edgeignore", ".gitignore", "app.txt", "deploy.ps1", "deploy.sh", "edge.toml"}
+	want := []string{
+		".edgeignore",
+		".gitignore",
+		"app.txt",
+		"deploy.ps1",
+		"deploy.sh",
+		"edge.toml",
+		"ignored.txt",
+	}
 	if diffStrings(names, want) {
 		t.Fatalf("archive names = %#v, want %#v", names, want)
 	}

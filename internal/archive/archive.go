@@ -118,22 +118,20 @@ func safeName(value string) string {
 
 func buildIgnoreMatcher(root string) (*ignore.GitIgnore, error) {
 	patterns := []string{".git", ".git/**", ".wenet", ".wenet/**"}
-	for _, name := range []string{".gitignore", ".edgeignore"} {
-		path := filepath.Join(root, name)
-		data, err := os.ReadFile(path)
-		if os.IsNotExist(err) {
+	path := filepath.Join(root, ".edgeignore")
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return ignore.CompileIgnoreLines(patterns...), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read .edgeignore: %w", err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", name, err)
-		}
-		for _, line := range strings.Split(string(data), "\n") {
-			line = strings.TrimSpace(line)
-			if line == "" || strings.HasPrefix(line, "#") {
-				continue
-			}
-			patterns = append(patterns, line)
-		}
+		patterns = append(patterns, line)
 	}
 	return ignore.CompileIgnoreLines(patterns...), nil
 }
@@ -144,7 +142,7 @@ func validateScript(root string, platform string, scriptPath string, matcher *ig
 		return fmt.Errorf("edge.toml scripts.%s must stay inside the project", platform)
 	}
 	if matcher.MatchesPath(filepath.ToSlash(clean)) {
-		return fmt.Errorf("edge.toml scripts.%s %q is ignored by .gitignore or .edgeignore", platform, scriptPath)
+		return fmt.Errorf("edge.toml scripts.%s %q is ignored by .edgeignore", platform, scriptPath)
 	}
 	info, err := os.Stat(filepath.Join(root, clean))
 	if err != nil {

@@ -38,8 +38,9 @@ wenet push
 wenet deploy
 ```
 
-`wenet package` reads `edge.toml` from the current directory, applies `.gitignore`
-and `.edgeignore`, and writes a deployment archive under `.wenet/`.
+`wenet package` reads `edge.toml` from the current directory, applies `.edgeignore`
+only, and writes a deployment archive under `.wenet/`. `.gitignore` is not used
+for packaging rules.
 
 `wenet push` and `wenet deploy` are command slots for the public API integration.
 They are designed for two package source modes:
