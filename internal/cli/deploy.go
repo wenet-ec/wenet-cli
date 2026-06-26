@@ -3,10 +3,12 @@ package cli
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/wenet-ec/wenet-cli/internal/api"
 	"github.com/wenet-ec/wenet-cli/internal/config"
+	"github.com/wenet-ec/wenet-cli/internal/project"
 	"github.com/wenet-ec/wenet-cli/internal/source"
 )
 
@@ -24,16 +26,64 @@ func newDeployCommand(opts *options) *cobra.Command {
 			if err := sourceOpts.Validate(); err != nil {
 				return err
 			}
+			root, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			cfg, err := project.Load(root)
+			if err != nil {
+				return err
+			}
 			client := api.NewClient(cred.Server, cred.Token)
-			if sourceOpts.IsRemote() {
-				return fmt.Errorf("deploy is not wired yet; repo import and rollout creation need the public API endpoint contract for %s", client.BaseURL())
+			pkg, err := pushPackage(client, root, cfg, sourceOpts)
+			if err != nil {
+				return err
 			}
-			if sourceOpts.IsPackageFile() {
-				return fmt.Errorf("deploy is not wired yet; package file upload and rollout creation need the public API endpoint contract for %s", client.BaseURL())
+			secretScopeID, err := resolveSecretScope(client, pkg.Project, cfg.SecretScope)
+			if err != nil {
+				return err
 			}
-			return fmt.Errorf("deploy is not wired yet; rollout creation needs the public API endpoint contract for %s", client.BaseURL())
+			rollout, err := client.CreateRollout(api.RolloutInput{
+				PackageID:       pkg.ID,
+				SecretScopeID:   secretScopeID,
+				DownloadBaseDir: cfg.DownloadBaseDir,
+				Cleanup:         *cfg.Cleanup,
+				Targeting:       targetingPayload(cfg),
+			})
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Created rollout %s for package %s:%s (%d deployments)\n", rollout.ID, cfg.Project, pkg.Tag, rollout.DeploymentCount)
+			return nil
 		},
 	}
 	addSourceFlags(cmd, &sourceOpts)
 	return cmd
+}
+
+func resolveSecretScope(client *api.Client, projectID string, name string) (string, error) {
+	if name == "" {
+		return "", nil
+	}
+	scope, err := client.FindSecretScope(projectID, name)
+	if err != nil {
+		return "", err
+	}
+	if scope == nil {
+		return "", fmt.Errorf("secret scope %q not found for project", name)
+	}
+	return scope.ID, nil
+}
+
+func targetingPayload(cfg *project.Config) map[string]any {
+	switch {
+	case cfg.All:
+		return map[string]any{"type": "all"}
+	case len(cfg.NodeIDs) > 0:
+		return map[string]any{"type": "nodes", "node_ids": cfg.NodeIDs}
+	case len(cfg.ClusterNames) > 0:
+		return map[string]any{"type": "clusters", "cluster_names": cfg.ClusterNames}
+	default:
+		return map[string]any{"type": "tags", "tag_names": cfg.Tags}
+	}
 }

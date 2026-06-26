@@ -42,8 +42,11 @@ wenet deploy
 only, and writes a deployment archive under `.wenet/`. `.gitignore` is not used
 for packaging rules.
 
-`wenet push` and `wenet deploy` are command slots for the public API integration.
-They are designed for two package source modes:
+`wenet push` ensures the project exists in WENet, then creates or overwrites the
+package identified by `(project, tag)`.
+
+`wenet deploy` performs the same package push, then creates a rollout using the
+targeting and runtime settings from `edge.toml`.
 
 ```bash
 # Local archive upload: build locally, upload file to WENet.
@@ -76,15 +79,14 @@ PACKAGE_FILE=dist/app.tar.gz
 ```toml
 project = "my-web-server"
 tag = "1.2.0"
+all = true
+download_base_dir = "/tmp"
+cleanup = true
 
 [scripts]
 linux = "deploy.sh"
 darwin = "deploy.sh"
 windows = "deploy.ps1"
-
-all = true
-download_base_dir = "/tmp"
-cleanup = true
 ```
 
 At least one script key is required. Valid keys are `linux`, `darwin`, and
