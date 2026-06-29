@@ -83,7 +83,11 @@ func targetingPayload(cfg *project.Config) map[string]any {
 		return map[string]any{"type": "nodes", "node_ids": cfg.NodeIDs}
 	case len(cfg.ClusterNames) > 0:
 		return map[string]any{"type": "clusters", "cluster_names": cfg.ClusterNames}
-	default:
+	case len(cfg.Tags) > 0:
 		return map[string]any{"type": "tags", "tag_names": cfg.Tags}
+	default:
+		// Config.Validate() rejects configs that reach here; this is unreachable
+		// in normal operation but makes the exhaustiveness explicit.
+		panic("targetingPayload: no targeting form set; call Config.Validate() before this")
 	}
 }

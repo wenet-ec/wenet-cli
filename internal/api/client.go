@@ -231,7 +231,7 @@ func (c *Client) do(method string, path string, contentType string, body io.Read
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("%s %s failed: %s: %s", method, path, resp.Status, strings.TrimSpace(string(data)))
+		return apiError(method, path, resp.Status, data)
 	}
 	if out == nil {
 		return nil
@@ -244,6 +244,30 @@ func (c *Client) do(method string, path string, contentType string, body io.Read
 		return nil
 	}
 	return json.Unmarshal(wrapped.Data, out)
+}
+
+// apiError extracts the human-readable message from the platform's error
+// envelope {"error": {"message": "...", "details": {...}}} and falls back to
+// the raw body when the envelope is absent or unparseable.
+func apiError(method, path, status string, body []byte) error {
+	var env struct {
+		Error *struct {
+			Message string `json:"message"`
+			Details any    `json:"details"`
+		} `json:"error"`
+	}
+	if json.Unmarshal(body, &env) == nil && env.Error != nil {
+		msg := env.Error.Message
+		if env.Error.Details != nil {
+			if raw, err := json.Marshal(env.Error.Details); err == nil && string(raw) != "null" {
+				msg += ": " + string(raw)
+			}
+		}
+		if msg != "" {
+			return fmt.Errorf("%s %s: %s", method, path, msg)
+		}
+	}
+	return fmt.Errorf("%s %s failed: %s: %s", method, path, status, strings.TrimSpace(string(body)))
 }
 
 func (c *Client) publicURL(path string) string {
